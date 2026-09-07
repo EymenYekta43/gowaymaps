@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GOWay MAPS - Canlı Kara Taşıtı Takip Platformu</title>
+    <!-- Leaflet CSS (Harita Motoru) -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="dark-theme">
+
+    <!-- Üst Arayüz Barı -->
+    <header class="top-bar">
+        <div class="logo">GOWay <span>MAPS</span></div>
+        
+        <!-- Arama ve Filtreleme -->
+        <div class="search-box">
+            <input type="text" id="searchInput" placeholder="Sefer Kodu veya Plaka Ara (Örn: GW-1042)...">
+            <select id="filterCategory">
+                <option value="all">Tüm Araç Tipleri</option>
+                <option value="logistic">Lojistik Transfer Aracı</option>
+                <option value="public">Genel Ulaşım Aracı</option>
+                <option value="custom">Özel Araçlar</option>
+            </select>
+        </div>
+
+        <!-- Sağ Aksiyon Butonları -->
+        <div class="header-actions">
+            <button id="toggleThemeBtn" onclick="toggleTheme()">☀️ Aydınlık Mod</button>
+            <button id="toggleTraficBtn" onclick="toggleTraffic()">🚦 Trafik Katmanı</button>
+            <button class="btn-login" onclick="openModal('loginModal')">Giriş Yap / Üye Ol</button>
+        </div>
+    </header>
+
+    <!-- Ana İçerik: Harita ve Yan Panel -->
+    <main class="main-container">
+        <!-- Sol/Sağ Detay Paneli (Tıklanan Araç Bilgisi) -->
+        <aside id="detailPanel" class="detail-panel hidden">
+            <button class="close-btn" onclick="closeDetailPanel()">✕</button>
+            <div id="panelContent">
+                <!-- JavaScript tarafı dinamik dolduracak -->
+            </div>
+        </aside>
+
+        <!-- Harita Alanı -->
+        <div id="map"></div>
+    </main>
+
+    <!-- Giriş ve Kayıt Ol Modal (Pencere) -->
+    <div id="loginModal" class="modal hidden">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeModal('loginModal')">&times;</span>
+            
+            <div class="modal-tabs">
+                <button class="tab-btn active" onclick="switchTab('login')">Giriş Yap</button>
+                <button class="tab-btn" onclick="switchTab('register')">Üye Ol (Sürücü Başvurusu)</button>
+            </div>
+
+            <!-- Giriş Formu -->
+            <form id="loginForm" class="tab-content active" onsubmit="handleLogin(event)">
+                <h3>GOWay MAPS Hesabınıza Giriş Yapın</h3>
+                <input type="email" placeholder="E-posta Adresi" required>
+                <input type="password" placeholder="Şifre" required>
+                <button type="submit" class="btn-primary">Giriş Yap</button>
+            </form>
+
+            <!-- Kayıt Ol Formu -->
+            <form id="registerForm" class="tab-content" onsubmit="handleRegister(event)">
+                <h3>Sürücü / Konum Paylaşan Üyelik Başvurusu</h3>
+                <p class="info-text">Başvurunuz admin tarafından (info.eyem43@gmail.com) incelenip onaylandıktan sonra hesabınız aktifleşecektir.</p>
+                <input type="text" id="regName" placeholder="Ad Soyad / Firma Adı" required>
+                <input type="email" id="regEmail" placeholder="E-posta Adresi" required>
+                <input type="password" placeholder="Şifre" required>
+                <input type="text" placeholder="Plaka (Örn: 43 ABC 123)" required>
+                
+                <label>Araç Tipi:</label>
+                <select id="vehicleTypeSelect" onchange="toggleCustomVehicleInput(this)">
+                    <option value="Lojistik Transfer Aracı">Lojistik Transfer Aracı</option>
+                    <option value="Genel Ulaşım Aracı">Genel Ulaşım Aracı</option>
+                    <option value="custom">Özel Araç Tipi Yaz...</option>
+                </select>
+                <input type="text" id="customVehicleInput" class="hidden" placeholder="Kendi Araç Tipinizi Yazın">
+
+                <button type="submit" class="btn-primary">Başvuru Gönder</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Leaflet JS ve Ana Script -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
