@@ -1,158 +1,115 @@
-// Render Backend Sunucu Bağlantısı
 const BACKEND_URL = "https://gowaymaps-backend.onrender.com";
-const socket = io(BACKEND_URL);
 
-// 1. Haritayı Başlatma
-const map = L.map('map').setView([39.9334, 32.8597], 6);
-
+// 1. Leaflet Haritası
+const map = L.map('map').setView([39.92077, 32.85411], 6);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
-    attribution: '© OpenStreetMap | GOWay MAPS'
+    attribution: '© OpenStreetMap & GOWay MAPS'
 }).addTo(map);
 
-// 2. Arama Motoru
-if (typeof L.Control.geocoder !== 'undefined') {
-    L.Control.geocoder({
-        defaultMarkGeocode: true,
-        placeholder: "Şehir, adres veya konum ara..."
-    }).addTo(map);
-}
+const driverMarkers = {};
+const driverRoutes = {};
 
-const markers = {};
-
-// 3. Tema Değiştirici
-const themeToggleBtn = document.getElementById('themeToggleBtn');
-let isDarkMode = true;
-
-if (themeToggleBtn) {
-    themeToggleBtn.addEventListener('click', () => {
-        isDarkMode = !isDarkMode;
-        document.body.classList.toggle('dark-mode', isDarkMode);
-        document.body.classList.toggle('light-mode', !isDarkMode);
-        
-        const icon = themeToggleBtn.querySelector('i');
-        icon.className = isDarkMode ? 'fa-solid fa-moon' : 'fa-solid fa-sun';
-    });
-}
-
-// 4. Modal Açma/Kapama İşlemleri
-const openFormBtn = document.getElementById('openFormBtn');
-const closeModalBtn = document.getElementById('closeModalBtn');
-const registerModal = document.getElementById('registerModal');
-
-const openLoginBtn = document.getElementById('openLoginBtn');
-const closeLoginModalBtn = document.getElementById('closeLoginModalBtn');
-const loginModal = document.getElementById('loginModal');
-
-if (openFormBtn) openFormBtn.addEventListener('click', () => registerModal.style.display = 'flex');
-if (closeModalBtn) closeModalBtn.addEventListener('click', () => registerModal.style.display = 'none');
-
-if (openLoginBtn) openLoginBtn.addEventListener('click', () => loginModal.style.display = 'flex');
-if (closeLoginModalBtn) closeLoginModalBtn.addEventListener('click', () => loginModal.style.display = 'none');
-
-window.addEventListener('click', (e) => {
-    if (e.target === registerModal) registerModal.style.display = 'none';
-    if (e.target === loginModal) loginModal.style.display = 'none';
+// 2. Tekil Socket.io Bağlantısı
+const socket = io(BACKEND_URL, {
+    transports: ['websocket', 'polling'],
+    reconnection: true,
+    reconnectionAttempts: 10
 });
 
-// 5. Sürücü Kaydı (Sunucu Uyanma Beklemeli)
-const registerForm = document.getElementById('registerForm');
+const statusBadge = document.getElementById('statusBadge');
+const statusText = document.getElementById('statusText');
 
-if (registerForm) {
-    registerForm.addEventListener('submit', function (e) {
-        e.preventDefault();
+socket.on('connect', () => {
+    console.log("✅ Sunucuya kesintisiz bağlandık!");
+    statusBadge.classList.add('online');
+    statusText.innerText = "Canlı Bağlantı Aktif";
+});
 
-        const submitBtn = document.getElementById('regSubmitBtn');
-        submitBtn.innerText = "Gönderiliyor (Sunucuya Bağlanıyor...)...";
-        submitBtn.disabled = true;
+socket.on('disconnect', () => {
+    statusBadge.classList.remove('online');
+    statusText.innerText = "Bağlantı Kesildi";
+});
 
-        const formData = {
-            name: document.getElementById('name').value,
-            email: document.getElementById('email').value,
-            plate: document.getElementById('plate').value,
-            vehicleType: document.getElementById('vehicleType').value,
-            photoUrl: document.getElementById('photoUrl').value || ''
-        };
+// 3. Canlı Konum ve Rota Çizimi
+socket.on('updateLocation', (data) => {
+    const { driverId, name, plate, lat, lng, speed, heading, routeGeometry, estimatedArrival } = data;
+    if (!lat || !lng) return;
 
-        fetch(`${BACKEND_URL}/api/register`, {
+    document.getElementById('activeDriver').innerText = `${plate || 'Araç'} (${name || 'Sürücü'})`;
+    document.getElementById('speedDisplay').innerText = `${Math.round(speed || 0)} km/s`;
+    
+    if (estimatedArrival) {
+        const eta = new Date(estimatedArrival);
+        document.getElementById('etaDisplay').innerText = eta.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+    }
+
+    const carIcon = L.divIcon({
+        className: 'custom-car-icon',
+        html: `<div style="transform: rotate(${heading || 0}deg); font-size: 28px; filter: drop-shadow(0px 2px 4px rgba(0,0,0,0.4));">🚗</div>`,
+        iconSize: [32, 32],
+        iconAnchor: [16, 16]
+    });
+
+    if (!driverMarkers[driverId]) {
+        driverMarkers[driverId] = L.marker([lat, lng], { icon: carIcon }).addTo(map);
+        driverMarkers[driverId].bindPopup(`<b>${plate}</b><br>${name}`).openPopup();
+        map.setView([lat, lng], 14);
+    } else {
+        driverMarkers[driverId].setLatLng([lat, lng]);
+        driverMarkers[driverId].setIcon(carIcon);
+    }
+
+    if (routeGeometry && Array.isArray(routeGeometry) && routeGeometry.length > 0) {
+        if (driverRoutes[driverId]) {
+            driverRoutes[driverId].setLatLngs(routeGeometry);
+        } else {
+            driverRoutes[driverId] = L.polyline(routeGeometry, {
+                color: '#1a73e8',
+                weight: 6,
+                opacity: 0.8
+            }).addTo(map);
+        }
+    }
+});
+
+// 4. Form Gönderim İşlemi
+document.getElementById('registerForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const submitBtn = document.getElementById('submitBtn');
+    const formResponse = document.getElementById('formResponse');
+
+    submitBtn.disabled = true;
+    submitBtn.innerText = "GÖNDERİLİYOR...";
+
+    const formData = {
+        name: document.getElementById('name').value,
+        email: document.getElementById('email').value,
+        plate: document.getElementById('plate').value,
+        vehicleType: document.getElementById('vehicleType').value
+    };
+
+    try {
+        const res = await fetch(`${BACKEND_URL}/api/register`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(formData)
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.success) {
-                alert("Başvurunuz başarıyla alındı! Yönetici onayının ardından konum paylaşımı aktifleşecektir.");
-                registerForm.reset();
-                registerModal.style.display = 'none';
-            } else {
-                alert("Hata: " + (data.error || "Başvuru alınamadı."));
-            }
-        })
-        .catch(err => {
-            console.error("Hata:", err);
-            alert("Sunucu uykuda olabilir veya yanıt vermiyor. Lütfen 30 saniye bekleyip tekrar deneyin.");
-        })
-        .finally(() => {
-            submitBtn.innerText = "Başvuruyu Gönder";
-            submitBtn.disabled = false;
         });
-    });
-}
+        const result = await res.json();
 
-// 6. Sürücü Girişi ve Konum Başlatma
-const loginForm = document.getElementById('loginForm');
-
-if (loginForm) {
-    loginForm.addEventListener('submit', function (e) {
-        e.preventDefault();
-        
-        const plate = document.getElementById('loginPlate').value;
-        const vehicleType = document.getElementById('loginVehicleType').value;
-        const photoUrl = document.getElementById('loginPhotoUrl').value || '';
-
-        startTracking('driver_' + Date.now(), plate, vehicleType, photoUrl);
-        
-        alert(`Giriş Başarılı! ${plate} plakalı ${vehicleType} için canlı konum paylaşımı başlatıldı.`);
-        loginModal.style.display = 'none';
-    });
-}
-
-// 7. GPS Konum Yayınlama
-function startTracking(driverId, plate, vehicleType, photoUrl) {
-    if ('geolocation' in navigator) {
-        navigator.geolocation.watchPosition(
-            (position) => {
-                const { latitude, longitude } = position.coords;
-                socket.emit('sendLocation', {
-                    id: driverId,
-                    plate: plate,
-                    vehicleType: vehicleType,
-                    photoUrl: photoUrl,
-                    lat: latitude,
-                    lng: longitude
-                });
-            },
-            (error) => alert("GPS Konum İzni Verilmedi veya Alınamadı: " + error.message),
-            { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 }
-        );
-    } else {
-        alert("Cihazınız konum takibini desteklemiyor.");
-    }
-}
-
-// 8. Socket.io ile Gelen Araçları Haritaya Ekleme
-socket.on('updateLocation', (data) => {
-    const { id, plate, vehicleType, photoUrl, lat, lng } = data;
-
-    let imgHtml = photoUrl ? `<br><img src="${photoUrl}" class="vehicle-popup-img" alt="Araç Fotoğrafı" onError="this.style.display='none'">` : '';
-    let popupContent = `<b>Plaka:</b> ${plate}<br><b>Tip:</b> ${vehicleType}${imgHtml}`;
-
-    if (markers[id]) {
-        markers[id].setLatLng([lat, lng]);
-    } else {
-        markers[id] = L.marker([lat, lng]).addTo(map)
-            .bindPopup(popupContent)
-            .openPopup();
+        if (result.success) {
+            formResponse.style.color = "#2e7d32";
+            formResponse.innerText = "✅ Başvuru alındı! Onay maili gönderildi.";
+            document.getElementById('registerForm').reset();
+        } else {
+            formResponse.style.color = "#d93025";
+            formResponse.innerText = "❌ " + (result.error || "Hata oluştu.");
+        }
+    } catch (err) {
+        formResponse.style.color = "#d93025";
+        formResponse.innerText = "❌ Sunucu hatası!";
+    } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerText = "BAŞVURUYU GÖNDER";
     }
 });
