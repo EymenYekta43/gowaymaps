@@ -3,99 +3,73 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GOWay MAPS - Canlı Araç Takip Platformu</title>
-    
-    <!-- Leaflet CSS -->
+    <title>GOWay MAPS - Canlı Navigasyon</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <!-- Leaflet Geocoder CSS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
-    <!-- FontAwesome İkonlar -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-    <!-- Özel CSS -->
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css" />
 </head>
-<body class="dark-mode">
+<body>
+    <div class="app-container">
+        <div class="sidebar">
+            <div class="brand-header">
+                <h1>GOWay MAPS</h1>
+                <p>Canlı Araç & Rota Takip Portalı</p>
+            </div>
 
-    <!-- Üst Bar (Navbar) -->
-    <header class="navbar">
-        <div class="logo">
-            <i class="fa-solid fa-location-dot"></i> GOWay MAPS
-        </div>
-        <div class="nav-controls">
-            <button id="themeToggleBtn" class="btn-icon" title="Tema Değiştir"><i class="fa-solid fa-moon"></i></button>
-            <button id="openLoginBtn" class="btn-primary btn-success"><i class="fa-solid fa-right-to-bracket"></i> Sürücü Girişi</button>
-            <button id="openFormBtn" class="btn-primary"><i class="fa-solid fa-user-plus"></i> Sürücü Kaydı</button>
-        </div>
-    </header>
+            <div class="panel-section">
+                <div class="panel-title">Sürücü Başvuru Formu</div>
+                <form id="registerForm">
+                    <div class="form-group">
+                        <label for="name">Sürücü / Firma Adı *</label>
+                        <input type="text" id="name" placeholder="Örn: Ahmet Yılmaz" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="email">E-posta Adresi *</label>
+                        <input type="email" id="email" placeholder="ornek@mail.com" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="plate">Araç Plakası *</label>
+                        <input type="text" id="plate" placeholder="Örn: 06 GW 430" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="vehicleType">Araç Tipi</label>
+                        <select id="vehicleType">
+                            <option value="Kamyon / Tır">Kamyon / Tır</option>
+                            <option value="Panelvan">Panelvan</option>
+                            <option value="Binek Araç">Binek Araç</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn-submit" id="submitBtn">BAŞVURUYU GÖNDER</button>
+                </form>
+                <div id="formResponse"></div>
+            </div>
 
-    <!-- Harita Alanı -->
-    <main id="map-container">
+            <div class="panel-section">
+                <div class="panel-title">Sistem & Takip Bilgisi</div>
+                <div class="telemetry-card">
+                    <div class="telemetry-row">
+                        <span>Bağlantı:</span>
+                        <span id="statusBadge" class="status-badge"><span class="status-dot"></span><span id="statusText">Bağlanıyor...</span></span>
+                    </div>
+                    <div class="telemetry-row">
+                        <span>Aktif Araç:</span>
+                        <span id="activeDriver" class="telemetry-value">Henüz Seçilmedi</span>
+                    </div>
+                    <div class="telemetry-row">
+                        <span>Anlık Hız:</span>
+                        <span id="speedDisplay" class="telemetry-value highlight">0 km/s</span>
+                    </div>
+                    <div class="telemetry-row">
+                        <span>Tahmini Varış:</span>
+                        <span id="etaDisplay" class="telemetry-value">--:--</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div id="map"></div>
-    </main>
-
-    <!-- Kayıt Modalı -->
-    <div id="registerModal" class="modal">
-        <div class="modal-content">
-            <span id="closeModalBtn" class="close">&times;</span>
-            <h2><i class="fa-solid fa-truck-fast"></i> Sürücü Başvuru Formu</h2>
-            <form id="registerForm">
-                <div class="form-group">
-                    <label for="name">Ad Soyad / Firma</label>
-                    <input type="text" id="name" required placeholder="Örn: Ahmet Yılmaz">
-                </div>
-                <div class="form-group">
-                    <label for="email">E-posta Adresi</label>
-                    <input type="email" id="email" required placeholder="Örn: ahmet@example.com">
-                </div>
-                <div class="form-group">
-                    <label for="plate">Araç Plakası</label>
-                    <input type="text" id="plate" required placeholder="Örn: 06 GW 1234">
-                </div>
-                <div class="form-group">
-                    <label for="vehicleType">Araç Tipi</label>
-                    <select id="vehicleType" required>
-                        <option value="Genel Araç">Genel Araç</option>
-                        <option value="Lojistik Transfer Aracı">Lojistik Transfer Aracı</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="photoUrl">Araç Fotoğrafı (Görsel URL / Bağlantı)</label>
-                    <input type="url" id="photoUrl" placeholder="https://ornek.com/arac-resmi.jpg">
-                </div>
-                <button type="submit" id="regSubmitBtn" class="btn-submit">Başvuruyu Gönder</button>
-            </form>
-        </div>
     </div>
 
-    <!-- Sürücü Giriş Modalı -->
-    <div id="loginModal" class="modal">
-        <div class="modal-content">
-            <span id="closeLoginModalBtn" class="close">&times;</span>
-            <h2><i class="fa-solid fa-right-to-bracket"></i> Sürücü Girişi</h2>
-            <form id="loginForm">
-                <div class="form-group">
-                    <label for="loginPlate">Plakanız</label>
-                    <input type="text" id="loginPlate" required placeholder="Örn: 06 GW 1234">
-                </div>
-                <div class="form-group">
-                    <label for="loginVehicleType">Araç Tipi</label>
-                    <select id="loginVehicleType" required>
-                        <option value="Genel Araç">Genel Araç</option>
-                        <option value="Lojistik Transfer Aracı">Lojistik Transfer Aracı</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="loginPhotoUrl">Araç Fotoğrafı (Opsiyonel URL)</label>
-                    <input type="url" id="loginPhotoUrl" placeholder="https://ornek.com/arac.jpg">
-                </div>
-                <button type="submit" class="btn-submit btn-success">Konum Paylaşımını Başlat</button>
-            </form>
-        </div>
-    </div>
-
-    <!-- Scriptler -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script src="app.js"></script>
 </body>
