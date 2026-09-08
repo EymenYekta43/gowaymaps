@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GOWay MAPS - Canlı Takip Platformu</title>
+    <title>GOWay MAPS - Canlı Araç Takip Platformu</title>
     
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <!-- Leaflet Geocoder (Arama) CSS -->
+    <!-- Leaflet Geocoder CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
     <!-- FontAwesome İkonlar -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
@@ -33,7 +33,7 @@
         <div id="map"></div>
     </main>
 
-    <!-- Sürücü Kayıt Modalı -->
+    <!-- Kayıt Modalı -->
     <div id="registerModal" class="modal">
         <div class="modal-content">
             <span id="closeModalBtn" class="close">&times;</span>
@@ -54,13 +54,15 @@
                 <div class="form-group">
                     <label for="vehicleType">Araç Tipi</label>
                     <select id="vehicleType" required>
-                        <option value="Otomobil">Otomobil</option>
-                        <option value="Kamyon/Tır">Kamyon / Tır</option>
-                        <option value="Motosiklet">Motosiklet</option>
-                        <option value="Servis/Minibüs">Servis / Minibüs</option>
+                        <option value="Genel Araç">Genel Araç</option>
+                        <option value="Lojistik Transfer Aracı">Lojistik Transfer Aracı</option>
                     </select>
                 </div>
-                <button type="submit" class="btn-submit">Başvuruyu Gönder</button>
+                <div class="form-group">
+                    <label for="photoUrl">Araç Fotoğrafı (Görsel URL / Bağlantı)</label>
+                    <input type="url" id="photoUrl" placeholder="https://ornek.com/arac-resmi.jpg">
+                </div>
+                <button type="submit" id="regSubmitBtn" class="btn-submit">Başvuruyu Gönder</button>
             </form>
         </div>
     </div>
@@ -75,12 +77,23 @@
                     <label for="loginPlate">Plakanız</label>
                     <input type="text" id="loginPlate" required placeholder="Örn: 06 GW 1234">
                 </div>
+                <div class="form-group">
+                    <label for="loginVehicleType">Araç Tipi</label>
+                    <select id="loginVehicleType" required>
+                        <option value="Genel Araç">Genel Araç</option>
+                        <option value="Lojistik Transfer Aracı">Lojistik Transfer Aracı</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="loginPhotoUrl">Araç Fotoğrafı (Opsiyonel URL)</label>
+                    <input type="url" id="loginPhotoUrl" placeholder="https://ornek.com/arac.jpg">
+                </div>
                 <button type="submit" class="btn-submit btn-success">Konum Paylaşımını Başlat</button>
             </form>
         </div>
     </div>
 
-    <!-- Script Bağlantıları -->
+    <!-- Scriptler -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
