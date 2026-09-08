@@ -3,29 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GOWay MAPS - Canlı Araç Takip Platformu</title>
+    <title>GOWay MAPS - Canlı Takip Platformu</title>
     
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <!-- Leaflet Geocoder (Arama Motoru) CSS -->
+    <!-- Leaflet Geocoder (Arama) CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
-    <!-- FontAwesome (İkonlar) -->
+    <!-- FontAwesome İkonlar -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     <!-- Özel CSS -->
     <link rel="stylesheet" href="style.css">
 </head>
 <body class="dark-mode">
 
-    <!-- Üst Bar (Header) -->
+    <!-- Üst Bar (Navbar) -->
     <header class="navbar">
         <div class="logo">
             <i class="fa-solid fa-location-dot"></i> GOWay MAPS
         </div>
-<div class="nav-controls">
-    <button id="themeToggleBtn" class="btn-icon" title="Tema Değiştir"><i class="fa-solid fa-moon"></i></button>
-    <button id="openLoginBtn" class="btn-primary" style="background-color: #2e7d32;"><i class="fa-solid fa-right-to-bracket"></i> Sürücü Girişi</button>
-    <button id="openFormBtn" class="btn-primary"><i class="fa-solid fa-user-plus"></i> Sürücü Kaydı</button>
-</div>
+        <div class="nav-controls">
+            <button id="themeToggleBtn" class="btn-icon" title="Tema Değiştir"><i class="fa-solid fa-moon"></i></button>
+            <button id="openLoginBtn" class="btn-primary btn-success"><i class="fa-solid fa-right-to-bracket"></i> Sürücü Girişi</button>
+            <button id="openFormBtn" class="btn-primary"><i class="fa-solid fa-user-plus"></i> Sürücü Kaydı</button>
+        </div>
     </header>
 
     <!-- Harita Alanı -->
@@ -33,7 +33,7 @@
         <div id="map"></div>
     </main>
 
-    <!-- Kayıt Modalı (Form) -->
+    <!-- Sürücü Kayıt Modalı -->
     <div id="registerModal" class="modal">
         <div class="modal-content">
             <span id="closeModalBtn" class="close">&times;</span>
@@ -61,6 +61,21 @@
                     </select>
                 </div>
                 <button type="submit" class="btn-submit">Başvuruyu Gönder</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Sürücü Giriş Modalı -->
+    <div id="loginModal" class="modal">
+        <div class="modal-content">
+            <span id="closeLoginModalBtn" class="close">&times;</span>
+            <h2><i class="fa-solid fa-right-to-bracket"></i> Sürücü Girişi</h2>
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="loginPlate">Plakanız</label>
+                    <input type="text" id="loginPlate" required placeholder="Örn: 06 GW 1234">
+                </div>
+                <button type="submit" class="btn-submit btn-success">Konum Paylaşımını Başlat</button>
             </form>
         </div>
     </div>
