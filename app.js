@@ -11,7 +11,7 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© OpenStreetMap | GOWay MAPS'
 }).addTo(map);
 
-// 2. Haritaya Arama Motorunu (Search Bar) Ekleme
+// 2. Haritaya Arama Motoru Ekleme
 if (typeof L.Control.geocoder !== 'undefined') {
     L.Control.geocoder({
         defaultMarkGeocode: true,
@@ -19,33 +19,44 @@ if (typeof L.Control.geocoder !== 'undefined') {
     }).addTo(map);
 }
 
-// Marker Objesi
 const markers = {};
 
-// 3. Modal ve Buton Kontrolleri (Çalışmayan Tuşlar İçin)
+// 3. Tema Değiştirme (Aydınlık / Karanlık Mod)
+const themeToggleBtn = document.getElementById('themeToggleBtn');
+let isDarkMode = true;
+
+if (themeToggleBtn) {
+    themeToggleBtn.addEventListener('click', () => {
+        isDarkMode = !isDarkMode;
+        document.body.classList.toggle('dark-mode', isDarkMode);
+        document.body.classList.toggle('light-mode', !isDarkMode);
+        
+        const icon = themeToggleBtn.querySelector('i');
+        icon.className = isDarkMode ? 'fa-solid fa-moon' : 'fa-solid fa-sun';
+    });
+}
+
+// 4. Modallar ve Butonlar
 const openFormBtn = document.getElementById('openFormBtn');
 const closeModalBtn = document.getElementById('closeModalBtn');
 const registerModal = document.getElementById('registerModal');
 
-if (openFormBtn && registerModal) {
-    openFormBtn.addEventListener('click', () => {
-        registerModal.style.display = 'flex';
-    });
-}
+const openLoginBtn = document.getElementById('openLoginBtn');
+const closeLoginModalBtn = document.getElementById('closeLoginModalBtn');
+const loginModal = document.getElementById('loginModal');
 
-if (closeModalBtn && registerModal) {
-    closeModalBtn.addEventListener('click', () => {
-        registerModal.style.display = 'none';
-    });
-}
+if (openFormBtn && registerModal) openFormBtn.addEventListener('click', () => registerModal.style.display = 'flex');
+if (closeModalBtn && registerModal) closeModalBtn.addEventListener('click', () => registerModal.style.display = 'none');
+
+if (openLoginBtn && loginModal) openLoginBtn.addEventListener('click', () => loginModal.style.display = 'flex');
+if (closeLoginModalBtn && loginModal) closeLoginModalBtn.addEventListener('click', () => loginModal.style.display = 'none');
 
 window.addEventListener('click', (e) => {
-    if (e.target === registerModal) {
-        registerModal.style.display = 'none';
-    }
+    if (e.target === registerModal) registerModal.style.display = 'none';
+    if (e.target === loginModal) loginModal.style.display = 'none';
 });
 
-// 4. Sürücü Kayıt Formu Gönderimi
+// 5. Sürücü Kayıt İşlemi
 const registerForm = document.getElementById('registerForm');
 
 if (registerForm) {
@@ -81,7 +92,43 @@ if (registerForm) {
     });
 }
 
-// 5. Canlı Konum Alma (Socket.io)
+// 6. Sürücü Girişi ve Konum Paylaşımını Başlatma
+const loginForm = document.getElementById('loginForm');
+
+if (loginForm) {
+    loginForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const plate = document.getElementById('loginPlate').value;
+
+        startTracking('driver_' + Date.now(), 'Sürücü (' + plate + ')', plate);
+        alert(`Giriş başarılı! ${plate} plakalı araç için canlı konum paylaşımı başlatıldı.`);
+        loginModal.style.display = 'none';
+    });
+}
+
+// 7. Canlı Konum Yayınlama (GPS)
+function startTracking(driverId, driverName, plate) {
+    if ('geolocation' in navigator) {
+        navigator.geolocation.watchPosition(
+            (position) => {
+                const { latitude, longitude } = position.coords;
+                socket.emit('sendLocation', {
+                    id: driverId,
+                    name: driverName,
+                    plate: plate,
+                    lat: latitude,
+                    lng: longitude
+                });
+            },
+            (error) => console.error("GPS Hatası:", error.message),
+            { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 }
+        );
+    } else {
+        alert("Cihazınız konum takibini desteklemiyor.");
+    }
+}
+
+// 8. Socket.io Canlı Konumu Haritada Güncelleme
 socket.on('updateLocation', (data) => {
     const { id, name, plate, lat, lng } = data;
 
@@ -93,51 +140,3 @@ socket.on('updateLocation', (data) => {
             .openPopup();
     }
 });
-// --- TEMA DEĞİŞTİRME (AYDINLIK / KARANLIK MOD) ---
-const themeToggleBtn = document.getElementById('themeToggleBtn');
-let isDarkMode = true;
-
-if (themeToggleBtn) {
-    themeToggleBtn.addEventListener('click', () => {
-        isDarkMode = !isDarkMode;
-        document.body.classList.toggle('dark-mode', isDarkMode);
-        document.body.classList.toggle('light-mode', !isDarkMode);
-        
-        const icon = themeToggleBtn.querySelector('i');
-        if (isDarkMode) {
-            icon.className = 'fa-solid fa-moon';
-        } else {
-            icon.className = 'fa-solid fa-sun';
-        }
-    });
-}
-
-// --- SÜRÜCÜ GİRİŞ YAP / KONUM BAŞLAT KONTROLÜ ---
-const openLoginBtn = document.getElementById('openLoginBtn');
-const loginModal = document.getElementById('loginModal');
-const closeLoginModalBtn = document.getElementById('closeLoginModalBtn');
-const loginForm = document.getElementById('loginForm');
-
-if (openLoginBtn && loginModal) {
-    openLoginBtn.addEventListener('click', () => {
-        loginModal.style.display = 'flex';
-    });
-}
-
-if (closeLoginModalBtn && loginModal) {
-    closeLoginModalBtn.addEventListener('click', () => {
-        loginModal.style.display = 'none';
-    });
-}
-
-if (loginForm) {
-    loginForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const plate = document.getElementById('loginPlate').value;
-
-        // GPS Canlı Konum Paylaşımını Başlat
-        startTracking('driver_' + Date.now(), 'Sürücü (' + plate + ')', plate);
-        alert(`Giriş başarılı! ${plate} plakalı araç için canlı konum paylaşımı başlatıldı.`);
-        loginModal.style.display = 'none';
-    });
-}
