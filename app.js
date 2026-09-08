@@ -2,26 +2,56 @@
 const BACKEND_URL = "https://gowaymaps-backend.onrender.com";
 const socket = io(BACKEND_URL);
 
-// Harita Başlatma (Varsayılan Türkiye / Ankara Merkezli)
+// 1. Haritayı Başlatma (Ankara Merkezli)
 const map = L.map('map').setView([39.9334, 32.8597], 6);
 
-// OpenStreetMap Katmanı Ekleme
+// OpenStreetMap Katmanı
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
-    attribution: '© OpenStreetMap katkıda bulunanlar | GOWay MAPS'
+    attribution: '© OpenStreetMap | GOWay MAPS'
 }).addTo(map);
 
-// Haritadaki İşaretçileri (Marker) Saklama Objesi
+// 2. Haritaya Arama Motorunu (Search Bar) Ekleme
+if (typeof L.Control.geocoder !== 'undefined') {
+    L.Control.geocoder({
+        defaultMarkGeocode: true,
+        placeholder: "Şehir, adres veya konum ara..."
+    }).addTo(map);
+}
+
+// Marker Objesi
 const markers = {};
 
-// --- 1. SÜRÜCÜ KAYIT FORMU İŞLEMLERİ ---
+// 3. Modal ve Buton Kontrolleri (Çalışmayan Tuşlar İçin)
+const openFormBtn = document.getElementById('openFormBtn');
+const closeModalBtn = document.getElementById('closeModalBtn');
+const registerModal = document.getElementById('registerModal');
+
+if (openFormBtn && registerModal) {
+    openFormBtn.addEventListener('click', () => {
+        registerModal.style.display = 'flex';
+    });
+}
+
+if (closeModalBtn && registerModal) {
+    closeModalBtn.addEventListener('click', () => {
+        registerModal.style.display = 'none';
+    });
+}
+
+window.addEventListener('click', (e) => {
+    if (e.target === registerModal) {
+        registerModal.style.display = 'none';
+    }
+});
+
+// 4. Sürücü Kayıt Formu Gönderimi
 const registerForm = document.getElementById('registerForm');
 
 if (registerForm) {
     registerForm.addEventListener('submit', function (e) {
         e.preventDefault();
 
-        // Form Verilerini Toplama
         const formData = {
             name: document.getElementById('name').value,
             email: document.getElementById('email').value,
@@ -29,7 +59,6 @@ if (registerForm) {
             vehicleType: document.getElementById('vehicleType').value
         };
 
-        // Render Sunucusuna Onay ve Kayıt İsteği Atma
         fetch(`${BACKEND_URL}/api/register`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -40,56 +69,25 @@ if (registerForm) {
             if (data.success) {
                 alert("Başvurunuz başarıyla alındı! Yönetici onayının ardından konum paylaşımı aktifleşecektir.");
                 registerForm.reset();
+                registerModal.style.display = 'none';
             } else {
-                alert("Başvuru gönderilirken bir hata oluştu: " + data.error);
+                alert("Hata: " + data.error);
             }
         })
         .catch(err => {
-            console.error("Bağlantı Hatası:", err);
-            alert("Sunucuya bağlanılamadı. Lütfen internet bağlantınızı ve sunucu durumunu kontrol edin.");
+            console.error("Hata:", err);
+            alert("Sunucuya bağlanılamadı. Lütfen tekrar deneyin.");
         });
     });
 }
 
-// --- 2. CANLI KONUM GÖNDERME (SÜRÜCÜ İÇİN) ---
-function startTracking(driverId, driverName, plate) {
-    if ('geolocation' in navigator) {
-        navigator.geolocation.watchPosition(
-            (position) => {
-                const { latitude, longitude } = position.coords;
-
-                // Socket.io üzerinden canlı konumu yayınlama
-                socket.emit('sendLocation', {
-                    id: driverId,
-                    name: driverName,
-                    plate: plate,
-                    lat: latitude,
-                    lng: longitude
-                });
-            },
-            (error) => {
-                console.error("GPS Konum Hatası:", error.message);
-            },
-            {
-                enableHighAccuracy: true,
-                maximumAge: 0,
-                timeout: 5000
-            }
-        );
-    } else {
-        alert("Cihazınız canlı konum takibini desteklemiyor.");
-    }
-}
-
-// --- 3. CANLI KONUM ALMA VE HARİTADA GÖSTERME (HERKES İÇİN) ---
+// 5. Canlı Konum Alma (Socket.io)
 socket.on('updateLocation', (data) => {
     const { id, name, plate, lat, lng } = data;
 
-    // Eğer sürücü haritada zaten varsa konumunu güncelle
     if (markers[id]) {
         markers[id].setLatLng([lat, lng]);
     } else {
-        // Yeni sürücüyü haritaya ekle ve popup (bilgi penceresi) oluştur
         markers[id] = L.marker([lat, lng]).addTo(map)
             .bindPopup(`<b>${name}</b><br>Plaka: ${plate}`)
             .openPopup();
