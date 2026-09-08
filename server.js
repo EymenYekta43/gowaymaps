@@ -3,12 +3,11 @@ const http = require('http');
 const { Server } = require('socket.io');
 const mongoose = require('mongoose');
 const cors = require('cors');
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 
 const app = express();
 const server = http.createServer(app);
 
-// CORS ve JSON Ayrıştırma
 app.use(cors());
 app.use(express.json());
 
@@ -19,22 +18,11 @@ mongoose.connect(MONGO_URI)
     .then(() => console.log("✅ MongoDB veritabanına başarıyla bağlandı."))
     .catch((err) => console.error("❌ MongoDB Bağlantı Hatası:", err.message));
 
-// 2. GMAIL MAİL AYARLARI (SSL / Port 465 Güncellendi)
-const GMAIL_USER = process.env.GMAIL_USER || "info.eyem43@gmail.com"; // Kendi Gmail adresini yaz
-const GMAIL_PASS = process.env.GMAIL_PASS || "nyad asik aima wzdd"; // Uygulama Şifren
+// 2. RESEND MAIL ENTEGRASYONU (Environment Variables Kullanımı)
+const RESEND_API_KEY = process.env.RESEND_API_KEY;
+const ALICI_GMAIL = process.env.ALICI_GMAIL || "GMAIL_ADRESINIZ@gmail.com"; // Kendi Gmail adresinizi yazın
 
-const transporter = nodemailer.createTransport({
-    host: 'smtp.gmail.com',
-    port: 465,
-    secure: true, // Port 465 üzerinden güvenli SSL bağlantısı (Connection Timeout Çözümü)
-    auth: {
-        user: GMAIL_USER,
-        pass: GMAIL_PASS
-    },
-    tls: {
-        rejectUnauthorized: false
-    }
-});
+const resend = new Resend(RESEND_API_KEY);
 
 // 3. SÜRÜCÜ MODELİ (DATABASE SCHEMA)
 const DriverSchema = new mongoose.Schema({
@@ -49,7 +37,7 @@ const DriverSchema = new mongoose.Schema({
 
 const Driver = mongoose.model('Driver', DriverSchema);
 
-// 4. API: SÜRÜCÜ KAYDI VE E-POSTA BİLDİRİMİ
+// 4. API: SÜRÜCÜ KAYDI VE BİLDİRİM MAİLİ
 app.post('/api/register', async (req, res) => {
     try {
         const { name, email, plate, vehicleType, photoUrl } = req.body;
@@ -69,41 +57,37 @@ app.post('/api/register', async (req, res) => {
         const savedDriver = await newDriver.save();
         console.log("📝 Yeni sürücü kaydedildi:", plate);
 
-        // Sunucu Adresi üzerinden otomatik onaylama bağlantısı
+        // Sunucu Adresi üzerinden otomatik onaylama linki
         const protocol = req.protocol;
         const host = req.get('host');
         const approveUrl = `${protocol}://${host}/api/approve/${savedDriver._id}`;
 
-        // Mail içeriği tasarımı
-        const mailOptions = {
-            from: `"GOWay MAPS Sistem" <${GMAIL_USER}>`,
-            to: GMAIL_USER,
-            subject: `🚨 Yeni Sürücü Başvurusu: ${plate}`,
-            html: `
-                <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px; max-width: 600px;">
-                    <h2 style="color: #1a73e8; margin-top: 0;">GOWay MAPS - Yeni Sürücü Başvurusu</h2>
-                    <p>Sisteme yeni bir sürücü başvuruda bulundu. Detaylar aşağıdadır:</p>
-                    <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
-                        <tr><td style="padding: 8px 0;"><b>Sürücü / Firma:</b></td><td>${name}</td></tr>
-                        <tr><td style="padding: 8px 0;"><b>E-posta:</b></td><td>${email}</td></tr>
-                        <tr><td style="padding: 8px 0;"><b>Plaka:</b></td><td>${plate}</td></tr>
-                        <tr><td style="padding: 8px 0;"><b>Araç Tipi:</b></td><td>${vehicleType || 'Genel Araç'}</td></tr>
-                        ${photoUrl ? `<tr><td style="padding: 8px 0;"><b>Görsel:</b></td><td><a href="${photoUrl}" target="_blank">Fotoğrafı Görüntüle</a></td></tr>` : ''}
-                    </table>
-                    <br>
-                    <a href="${approveUrl}" style="background-color: #2e7d32; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">SÜRÜCÜYÜ ONAYLA</a>
-                </div>
-            `
-        };
-
-        // Mail Gönderimi
-        transporter.sendMail(mailOptions, (error, info) => {
-            if (error) {
-                console.error("❌ MAIL GONDERIM HATASI:", error.message);
-            } else {
-                console.log("✅ Bildirim maili başarıyla gönderildi:", info.response);
-            }
-        });
+        // Mail Gönderimi (Resend HTTPS API)
+        try {
+            const data = await resend.emails.send({
+                from: 'GOWay MAPS <onboarding@resend.dev>',
+                to: [ALICI_GMAIL],
+                subject: `🚨 Yeni Sürücü Başvurusu: ${plate}`,
+                html: `
+                    <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px; max-width: 600px;">
+                        <h2 style="color: #1a73e8; margin-top:0;">GOWay MAPS - Yeni Sürücü Başvurusu</h2>
+                        <p>Sisteme yeni bir sürücü başvuruda bulundu. Detaylar aşağıdadır:</p>
+                        <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+                            <tr><td style="padding: 6px 0;"><b>Sürücü / Firma:</b></td><td>${name}</td></tr>
+                            <tr><td style="padding: 6px 0;"><b>E-posta:</b></td><td>${email}</td></tr>
+                            <tr><td style="padding: 6px 0;"><b>Plaka:</b></td><td>${plate}</td></tr>
+                            <tr><td style="padding: 6px 0;"><b>Araç Tipi:</b></td><td>${vehicleType || 'Genel Araç'}</td></tr>
+                            ${photoUrl ? `<tr><td style="padding: 6px 0;"><b>Görsel:</b></td><td><a href="${photoUrl}" target="_blank">Görüntüle</a></td></tr>` : ''}
+                        </table>
+                        <br>
+                        <a href="${approveUrl}" style="background-color: #2e7d32; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">SÜRÜCÜYÜ ONAYLA</a>
+                    </div>
+                `
+            });
+            console.log("✅ Bildirim maili başarıyla gönderildi:", data);
+        } catch (mailErr) {
+            console.error("❌ Mail Gönderim Hatası:", mailErr.message);
+        }
 
         res.json({ success: true, message: "Kayıt başarıyla alındı." });
     } catch (error) {
@@ -124,7 +108,7 @@ app.get('/api/approve/:id', async (req, res) => {
 
         res.send(`
             <div style="text-align:center; padding:50px; font-family:sans-serif;">
-                <h1 style="color: #2e7d32;">✅ Başarıyla Onaylandı!</h1>
+                <h1 style="color: #2e7d32;">✅ Sürücü Başarıyla Onaylandı!</h1>
                 <p><b>${driver.plate}</b> plakalı sürücü (<b>${driver.name}</b>) aktifleştirildi.</p>
                 <p>Sürücü artık GOWay MAPS haritasında canlı konum paylaşabilir.</p>
             </div>
@@ -134,10 +118,8 @@ app.get('/api/approve/:id', async (req, res) => {
     }
 });
 
-// SUNUCU SAĞLIK KONTROLÜ
-app.get('/', (req, res) => {
-    res.send("GOWay MAPS Backend Sunucusu Aktif!");
-});
+// SUNUCU TEST ENDPOINT
+app.get('/', (req, res) => res.send("GOWay MAPS Backend Sunucusu Aktif!"));
 
 // 6. SOCKET.IO CANLI KONUM
 const io = new Server(server, {
@@ -150,8 +132,5 @@ io.on('connection', (socket) => {
     });
 });
 
-// SUNUCUYU BAŞLAT
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-    console.log(`🚀 Sunucu ${PORT} portunda aktif.`);
-});
+const PORT = process.env.PORT || 10000;
+server.listen(PORT, () => console.log(`🚀 Sunucu ${PORT} portunda aktif.`));
