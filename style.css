@@ -1,203 +1,84 @@
 * {
+    box-sizing: border-box;
     margin: 0;
     padding: 0;
-    box-sizing: border-box;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    transition: background-color 0.3s, color 0.3s;
 }
 
-body {
-    display: flex;
-    flex-direction: column;
-    height: 100vh;
+body, html {
+    width: 100%;
+    height: 100%;
     overflow: hidden;
 }
 
-/* Karanlık Mod */
-body.dark-mode {
-    background-color: #121212;
-    color: #ffffff;
-}
-
-body.dark-mode .navbar {
-    background-color: #1e1e1e;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
-}
-
-body.dark-mode .modal-content {
-    background-color: #222831;
-    color: #ffffff;
-}
-
-body.dark-mode .form-group input, 
-body.dark-mode .form-group select {
-    background-color: #393e46;
-    color: #ffffff;
-    border: 1px solid #4f545c;
-}
-
-body.dark-mode .btn-icon {
-    background: #333333;
-    color: #ffffff;
-}
-
-/* Aydınlık Mod */
-body.light-mode {
-    background-color: #f5f5f5;
-    color: #121212;
-}
-
-body.light-mode .navbar {
-    background-color: #ffffff;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-}
-
-body.light-mode .modal-content {
-    background-color: #ffffff;
-    color: #121212;
-}
-
-body.light-mode .form-group input, 
-body.light-mode .form-group select {
-    background-color: #e8e8e8;
-    color: #121212;
-    border: 1px solid #cccccc;
-}
-
-body.light-mode .btn-icon {
-    background: #e0e0e0;
-    color: #121212;
-}
-
-/* Navbar */
-.navbar {
+.app-container {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 12px 20px;
+    width: 100vw;
+    height: 100vh;
+}
+
+.sidebar {
+    width: 360px;
+    background: #ffffff;
+    border-right: 1px solid #e0e0e0;
+    display: flex;
+    flex-direction: column;
     z-index: 1000;
+    overflow-y: auto;
 }
 
-.logo {
-    font-size: 1.3rem;
-    font-weight: bold;
-    color: #00adb5;
-}
-
-.nav-controls {
-    display: flex;
-    gap: 10px;
-}
-
-.btn-primary {
-    background-color: #00adb5;
+.brand-header {
+    padding: 20px;
+    background: #1a73e8;
     color: white;
-    border: none;
-    padding: 8px 16px;
-    border-radius: 6px;
-    cursor: pointer;
-    font-weight: 600;
 }
 
-.btn-primary:hover {
-    opacity: 0.9;
+.brand-header h1 { font-size: 20px; }
+.brand-header p { font-size: 12px; opacity: 0.8; }
+
+.panel-section {
+    padding: 20px;
+    border-bottom: 1px solid #f0f0f0;
 }
 
-.btn-success {
-    background-color: #2e7d32 !important;
+.panel-title {
+    font-size: 13px;
+    font-weight: bold;
+    color: #5f6368;
+    margin-bottom: 12px;
+    text-transform: uppercase;
 }
 
-.btn-icon {
-    border: none;
-    padding: 8px 12px;
-    border-radius: 6px;
-    cursor: pointer;
-}
-
-/* Harita */
-#map-container {
-    flex: 1;
-    width: 100%;
-    height: calc(100vh - 60px);
-    position: relative;
-}
-
-#map {
-    width: 100%;
-    height: 100%;
-    background: #222;
-}
-
-/* Modallar */
-.modal {
-    display: none;
-    position: fixed;
-    z-index: 2000;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.7);
-    justify-content: center;
-    align-items: center;
-}
-
-.modal-content {
-    padding: 25px;
-    border-radius: 10px;
-    width: 90%;
-    max-width: 420px;
-    position: relative;
-    box-shadow: 0 5px 20px rgba(0,0,0,0.4);
-}
-
-.close {
-    position: absolute;
-    right: 15px;
-    top: 10px;
-    font-size: 24px;
-    cursor: pointer;
-    color: #aaa;
-}
-
-.close:hover { color: #f00; }
-
-.form-group {
-    margin-bottom: 15px;
-}
-
-.form-group label {
-    display: block;
-    margin-bottom: 5px;
-    font-size: 0.9rem;
-}
-
+.form-group { margin-bottom: 12px; }
+.form-group label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 4px; }
 .form-group input, .form-group select {
     width: 100%;
     padding: 10px;
-    border-radius: 5px;
+    border: 1px solid #dadce0;
+    border-radius: 6px;
+    outline: none;
 }
 
 .btn-submit {
     width: 100%;
     padding: 12px;
-    background-color: #00adb5;
+    background: #2e7d32;
     color: white;
     border: none;
-    border-radius: 5px;
+    border-radius: 6px;
     font-weight: bold;
     cursor: pointer;
 }
 
-.leaflet-control-geocoder-form input {
-    color: #000000 !important;
-}
+.telemetry-card { background: #f8f9fa; border: 1px solid #e8eaed; border-radius: 8px; padding: 12px; }
+.telemetry-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 13px; }
+.telemetry-value { font-weight: bold; color: #202124; }
+.telemetry-value.highlight { color: #1a73e8; }
 
-/* Popup içi araç görseli stili */
-.vehicle-popup-img {
-    width: 100%;
-    max-height: 140px;
-    object-fit: cover;
-    border-radius: 6px;
-    margin-top: 8px;
-}
+.status-badge { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: bold; color: #d93025; }
+.status-dot { width: 8px; height: 8px; border-radius: 50%; background-color: #d93025; }
+.status-badge.online .status-dot { background-color: #1e8e3e; }
+.status-badge.online { color: #1e8e3e; }
+
+#map { flex: 1; height: 100%; z-index: 1; }
+#formResponse { margin-top: 10px; font-size: 12px; text-align: center; }
