@@ -13,7 +13,7 @@ app.use(express.json());
 
 // 1. MONGODB BAĞLANTISI
 // DiKKAT: Kendi MongoDB Atlas Bağlantı Linkini Aşağıdaki Tırnak İçine Yaz!
-const MONGO_URI = process.env.MONGO_URI || "mongodb+srv://KULLANICI_ADI:PAROLA@cluster0.xxxxx.mongodb.net/gowaymaps?retryWrites=true&w=majority";
+const MONGO_URI = process.env.MONGO_URI || "mongodb+srv://infoeyem43_db_user:Goway123456@gowaymaps.uuasw9u.mongodb.net/gowaymaps?retryWrites=true&w=majority&appName=GOWayMAPS";
 
 mongoose.connect(MONGO_URI)
     .then(() => console.log("✅ MongoDB veritabanına başarıyla bağlandı."))
