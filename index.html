@@ -3,92 +3,71 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GOWay MAPS - Canlı Kara Taşıtı Takip Platformu</title>
-    <!-- Leaflet CSS (Harita Motoru) -->
+    <title>GOWay MAPS - Canlı Araç Takip Platformu</title>
+    
+    <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- Leaflet Geocoder (Arama Motoru) CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
+    <!-- FontAwesome (İkonlar) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <!-- Özel CSS -->
     <link rel="stylesheet" href="style.css">
 </head>
-<body class="dark-theme">
+<body class="dark-mode">
 
-    <!-- Üst Arayüz Barı -->
-    <header class="top-bar">
-        <div class="logo">GOWay <span>MAPS</span></div>
-        
-        <!-- Arama ve Filtreleme -->
-        <div class="search-box">
-            <input type="text" id="searchInput" placeholder="Sefer Kodu veya Plaka Ara (Örn: GW-1042)...">
-            <select id="filterCategory">
-                <option value="all">Tüm Araç Tipleri</option>
-                <option value="logistic">Lojistik Transfer Aracı</option>
-                <option value="public">Genel Ulaşım Aracı</option>
-                <option value="custom">Özel Araçlar</option>
-            </select>
+    <!-- Üst Bar (Header) -->
+    <header class="navbar">
+        <div class="logo">
+            <i class="fa-solid fa-location-dot"></i> GOWay MAPS
         </div>
-
-        <!-- Sağ Aksiyon Butonları -->
-        <div class="header-actions">
-            <button id="toggleThemeBtn" onclick="toggleTheme()">☀️ Aydınlık Mod</button>
-            <button id="toggleTraficBtn" onclick="toggleTraffic()">🚦 Trafik Katmanı</button>
-            <button class="btn-login" onclick="openModal('loginModal')">Giriş Yap / Üye Ol</button>
+        <div class="nav-controls">
+            <button id="themeToggleBtn" class="btn-icon" title="Tema Değiştir"><i class="fa-solid fa-moon"></i></button>
+            <button id="openFormBtn" class="btn-primary"><i class="fa-solid fa-user-plus"></i> Sürücü Kaydı</button>
         </div>
     </header>
 
-    <!-- Ana İçerik: Harita ve Yan Panel -->
-    <main class="main-container">
-        <!-- Sol/Sağ Detay Paneli (Tıklanan Araç Bilgisi) -->
-        <aside id="detailPanel" class="detail-panel hidden">
-            <button class="close-btn" onclick="closeDetailPanel()">✕</button>
-            <div id="panelContent">
-                <!-- JavaScript tarafı dinamik dolduracak -->
-            </div>
-        </aside>
-
-        <!-- Harita Alanı -->
+    <!-- Harita Alanı -->
+    <main id="map-container">
         <div id="map"></div>
     </main>
 
-    <!-- Giriş ve Kayıt Ol Modal (Pencere) -->
-    <div id="loginModal" class="modal hidden">
+    <!-- Kayıt Modalı (Form) -->
+    <div id="registerModal" class="modal">
         <div class="modal-content">
-            <span class="close-modal" onclick="closeModal('loginModal')">&times;</span>
-            
-            <div class="modal-tabs">
-                <button class="tab-btn active" onclick="switchTab('login')">Giriş Yap</button>
-                <button class="tab-btn" onclick="switchTab('register')">Üye Ol (Sürücü Başvurusu)</button>
-            </div>
-
-            <!-- Giriş Formu -->
-            <form id="loginForm" class="tab-content active" onsubmit="handleLogin(event)">
-                <h3>GOWay MAPS Hesabınıza Giriş Yapın</h3>
-                <input type="email" placeholder="E-posta Adresi" required>
-                <input type="password" placeholder="Şifre" required>
-                <button type="submit" class="btn-primary">Giriş Yap</button>
-            </form>
-
-            <!-- Kayıt Ol Formu -->
-            <form id="registerForm" class="tab-content" onsubmit="handleRegister(event)">
-                <h3>Sürücü / Konum Paylaşan Üyelik Başvurusu</h3>
-                <p class="info-text">Başvurunuz admin tarafından (info.eyem43@gmail.com) incelenip onaylandıktan sonra hesabınız aktifleşecektir.</p>
-                <input type="text" id="regName" placeholder="Ad Soyad / Firma Adı" required>
-                <input type="email" id="regEmail" placeholder="E-posta Adresi" required>
-                <input type="password" placeholder="Şifre" required>
-                <input type="text" placeholder="Plaka (Örn: 43 ABC 123)" required>
-                
-                <label>Araç Tipi:</label>
-                <select id="vehicleTypeSelect" onchange="toggleCustomVehicleInput(this)">
-                    <option value="Lojistik Transfer Aracı">Lojistik Transfer Aracı</option>
-                    <option value="Genel Ulaşım Aracı">Genel Ulaşım Aracı</option>
-                    <option value="custom">Özel Araç Tipi Yaz...</option>
-                </select>
-                <input type="text" id="customVehicleInput" class="hidden" placeholder="Kendi Araç Tipinizi Yazın">
-
-                <button type="submit" class="btn-primary">Başvuru Gönder</button>
+            <span id="closeModalBtn" class="close">&times;</span>
+            <h2><i class="fa-solid fa-truck-fast"></i> Sürücü Başvuru Formu</h2>
+            <form id="registerForm">
+                <div class="form-group">
+                    <label for="name">Ad Soyad / Firma</label>
+                    <input type="text" id="name" required placeholder="Örn: Ahmet Yılmaz">
+                </div>
+                <div class="form-group">
+                    <label for="email">E-posta Adresi</label>
+                    <input type="email" id="email" required placeholder="Örn: ahmet@example.com">
+                </div>
+                <div class="form-group">
+                    <label for="plate">Araç Plakası</label>
+                    <input type="text" id="plate" required placeholder="Örn: 06 GW 1234">
+                </div>
+                <div class="form-group">
+                    <label for="vehicleType">Araç Tipi</label>
+                    <select id="vehicleType" required>
+                        <option value="Otomobil">Otomobil</option>
+                        <option value="Kamyon/Tır">Kamyon / Tır</option>
+                        <option value="Motosiklet">Motosiklet</option>
+                        <option value="Servis/Minibüs">Servis / Minibüs</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn-submit">Başvuruyu Gönder</button>
             </form>
         </div>
     </div>
 
-    <!-- Leaflet JS ve Ana Script -->
+    <!-- Script Bağlantıları -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script src="app.js"></script>
 </body>
 </html>
