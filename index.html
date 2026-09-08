@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GOWay MAPS - Canlı Navigasyon</title>
+    <title>GOWay MAPS - Canlı Navigasyon Portalı</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="style.css" />
 </head>
@@ -12,39 +12,91 @@
         <div class="sidebar">
             <div class="brand-header">
                 <h1>GOWay MAPS</h1>
-                <p>Canlı Araç & Rota Takip Portalı</p>
+                <p>Canlı Lojistik & Araç Takip</p>
             </div>
 
-            <div class="panel-section">
-                <div class="panel-title">Sürücü Başvuru Formu</div>
+            <div class="tab-buttons">
+                <button class="tab-btn active" onclick="switchTab('loginTab', event)">Giriş Yap</button>
+                <button class="tab-btn" onclick="switchTab('registerTab', event)">Kayıt Ol</button>
+                <button class="tab-btn" onclick="switchTab('statusTab', event)">Canlı Takip</button>
+            </div>
+
+            <!-- GİRİŞ SEKMESİ -->
+            <div id="loginTab" class="panel-section tab-content active">
+                <div class="panel-title">Sürücü Girişi</div>
+                <form id="loginForm">
+                    <div class="form-group">
+                        <label>E-posta Adresi *</label>
+                        <input type="email" id="loginEmail" required placeholder="ornek@mail.com">
+                    </div>
+                    <div class="form-group">
+                        <label>Şifre *</label>
+                        <input type="password" id="loginPassword" required placeholder="******">
+                    </div>
+                    <button type="submit" class="btn-submit">GİRİŞ YAP</button>
+                </form>
+                <div id="loginResponse" class="response-msg"></div>
+            </div>
+
+            <!-- KAYIT SEKMESİ -->
+            <div id="registerTab" class="panel-section tab-content">
+                <div class="panel-title">Sürücü & Araç Kaydı</div>
                 <form id="registerForm">
                     <div class="form-group">
-                        <label for="name">Sürücü / Firma Adı *</label>
-                        <input type="text" id="name" placeholder="Örn: Ahmet Yılmaz" required>
+                        <label>Ad Soyad / Firma *</label>
+                        <input type="text" id="regName" required placeholder="Ahmet Yılmaz">
                     </div>
                     <div class="form-group">
-                        <label for="email">E-posta Adresi *</label>
-                        <input type="email" id="email" placeholder="ornek@mail.com" required>
+                        <label>E-posta *</label>
+                        <input type="email" id="regEmail" required placeholder="ornek@mail.com">
                     </div>
                     <div class="form-group">
-                        <label for="plate">Araç Plakası *</label>
-                        <input type="text" id="plate" placeholder="Örn: 06 GW 430" required>
+                        <label>Şifre *</label>
+                        <input type="password" id="regPassword" required placeholder="******">
                     </div>
                     <div class="form-group">
-                        <label for="vehicleType">Araç Tipi</label>
-                        <select id="vehicleType">
-                            <option value="Kamyon / Tır">Kamyon / Tır</option>
-                            <option value="Panelvan">Panelvan</option>
-                            <option value="Binek Araç">Binek Araç</option>
+                        <label>Araç Plakası *</label>
+                        <input type="text" id="regPlate" required placeholder="06 GW 430">
+                    </div>
+                    <div class="form-group">
+                        <label>Araç Tipi *</label>
+                        <select id="regVehicleType" required>
+                            <option value="Lojistik Transfer Aracı">Lojistik Transfer Aracı</option>
+                            <option value="Genel Araç">Genel Araç</option>
                         </select>
                     </div>
-                    <button type="submit" class="btn-submit" id="submitBtn">BAŞVURUYU GÖNDER</button>
+                    <div class="form-group">
+                        <label>Profil / Araç Görsel URL</label>
+                        <input type="url" id="regPhotoUrl" placeholder="https://ornek.com/arac.jpg">
+                    </div>
+                    <div class="form-group">
+                        <label>Tahmini Kalkış Saati</label>
+                        <input type="datetime-local" id="regEstDep">
+                    </div>
+                    <div class="form-group">
+                        <label>Tahmini Varış Saati</label>
+                        <input type="datetime-local" id="regEstArr">
+                    </div>
+                    <button type="submit" class="btn-submit">KAYIT BAŞVURUSU YAP</button>
                 </form>
-                <div id="formResponse"></div>
+                <div id="regResponse" class="response-msg"></div>
             </div>
 
-            <div class="panel-section">
-                <div class="panel-title">Sistem & Takip Bilgisi</div>
+            <!-- CANLI TAKİP / TELEMETRİ SEKMESİ -->
+            <div id="statusTab" class="panel-section tab-content">
+                <div class="panel-title">Sistem & Telemetri Durumu</div>
+                
+                <div id="userInfoBox" class="user-info-box" style="display:none;">
+                    <div class="user-profile">
+                        <img id="userAvatar" src="https://via.placeholder.com/40" alt="Sürücü" />
+                        <div>
+                            <div id="welcomeUser" style="font-weight:bold;">---</div>
+                            <small id="userVehicleType" style="color:#666;">---</small>
+                        </div>
+                    </div>
+                    <button onclick="logout()" class="btn-logout">Çıkış</button>
+                </div>
+
                 <div class="telemetry-card">
                     <div class="telemetry-row">
                         <span>Bağlantı:</span>
@@ -58,10 +110,25 @@
                         <span>Anlık Hız:</span>
                         <span id="speedDisplay" class="telemetry-value highlight">0 km/s</span>
                     </div>
-                    <div class="telemetry-row">
-                        <span>Tahmini Varış:</span>
-                        <span id="etaDisplay" class="telemetry-value">--:--</span>
+                </div>
+
+                <!-- ZAMAN BİLGİLERİ PANELİ -->
+                <div class="panel-title" style="margin-top:15px;">Zaman Parametreleri</div>
+                <div class="time-card">
+                    <div class="time-row"><span>Tahmini Kalkış:</span><b id="dispEstDep">--:--</b></div>
+                    <div class="time-row"><span>Gerçek Kalkış:</span><b id="dispActDep" style="color:#2e7d32;">--:--</b></div>
+                    <div class="time-row"><span>Tahmini Varış:</span><b id="dispEstArr">--:--</b></div>
+                    <div class="time-row"><span>Gerçek Varış:</span><b id="dispActArr" style="color:#2e7d32;">--:--</b></div>
+                </div>
+
+                <!-- SÜRÜCÜ KONTROL VE HIZ SEÇİMİ -->
+                <div id="driverControls" style="display:none; margin-top:15px;">
+                    <div class="form-group">
+                        <label>Simülasyon / Manuel Hız Seçimi (km/s)</label>
+                        <input type="range" id="speedSelect" min="0" max="140" value="60" oninput="updateSpeedValue(this.value)">
+                        <div style="text-align:right; font-weight:bold; font-size:12px;" id="speedValLabel">60 km/s</div>
                     </div>
+                    <button id="startTripBtn" onclick="toggleTrip()" class="btn-submit" style="background:#1a73e8;">SEFERİ BAŞLAT / KONUM PAYLAŞ</button>
                 </div>
             </div>
         </div>
