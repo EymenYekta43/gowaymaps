@@ -8,6 +8,7 @@ const ResendModule = require('resend');
 const app = express();
 const server = http.createServer(app);
 
+// Cross-Origin desteği
 app.use(cors());
 app.use(express.json());
 
@@ -25,7 +26,7 @@ const ALICI_GMAIL = process.env.ALICI_GMAIL || "info.eyem43@gmail.com";
 const Resend = ResendModule.Resend || ResendModule;
 const resend = new Resend(RESEND_API_KEY);
 
-// 3. GELİŞMİŞ SÜRÜCÜ VE NAVİGASYON ŞEMASI (SCHEMAS)
+// 3. GELİŞMİŞ SÜRÜCÜ VE NAVİGASYON ŞEMASI
 const LocationSchema = new mongoose.Schema({
     lat: Number,
     lng: Number,
@@ -44,8 +45,8 @@ const DriverSchema = new mongoose.Schema({
     currentLocation: {
         lat: Number,
         lng: Number,
-        speed: { type: Number, default: 0 },       // km/h
-        heading: { type: Number, default: 0 },     // Araç yönü (derece 0-360)
+        speed: { type: Number, default: 0 },       // km/h cinsinden anlık hız
+        heading: { type: Number, default: 0 },     // Araç yön açısı (0-360 derece)
         updatedAt: { type: Date, default: Date.now }
     },
     startLocation: LocationSchema,                  // Başlangıç Noktası
@@ -59,7 +60,7 @@ const DriverSchema = new mongoose.Schema({
     
     // Rota Bilgileri
     routeGeometry: Array,                           // Çizilecek rota çizgisi koordinat dizisi [[lat, lng], ...]
-    routeHistory: [LocationSchema],                 // Sürücünün katettiği geçmiş konumlar (izler)
+    routeHistory: [LocationSchema],                 // Sürücünün katettiği geçmiş konumlar
     
     createdAt: { type: Date, default: Date.now }
 });
@@ -146,7 +147,7 @@ app.get('/api/approve/:id', async (req, res) => {
     }
 });
 
-// 6. API: TÜM SÜRÜCÜLERİ VE ROTARLARI LİSTELEME (HARİTA İÇİN)
+// 6. API: TÜM ONAYLI SÜRÜCÜLERİ VE ROTARLARI GETİRME
 app.get('/api/drivers', async (req, res) => {
     try {
         const drivers = await Driver.find({ isApproved: true });
@@ -156,18 +157,24 @@ app.get('/api/drivers', async (req, res) => {
     }
 });
 
-// SUNUCU TEST ENDPOINT
+// SUNUCU DURUM TESTİ
 app.get('/', (req, res) => res.send("GOWay MAPS Gelismis Lojistik Backend Aktif!"));
 
-// 7. SOCKET.IO GELİŞMİŞ CANLI NAVİGASYON VE ROTA YAYINI
+// 7. SOCKET.IO AYARLARI (Kopma Engelleyici Ayarlar Eklendi)
 const io = new Server(server, {
-    cors: { origin: "*", methods: ["GET", "POST"] }
+    cors: {
+        origin: "*",
+        methods: ["GET", "POST"]
+    },
+    pingTimeout: 60000,      // 60 saniye bağlantı zaman aşımı
+    pingInterval: 25000,     // 25 saniyede bir ping/pong kontrolü
+    transports: ['websocket', 'polling']
 });
 
 io.on('connection', (socket) => {
     console.log("⚡ Yeni istemci bağlandı:", socket.id);
 
-    // Sürücü Yolculuğa Başladığında (Kalkış zamanı kaydı)
+    // Yolculuk Başlangıcı
     socket.on('startTrip', async (data) => {
         const { driverId } = data;
         if (driverId) {
@@ -176,9 +183,8 @@ io.on('connection', (socket) => {
         }
     });
 
-    // Sürücü Canlı Konum, Hız ve Açısını Gönderdiğinde
+    // Canlı Konum, Hız, Yön ve Rota Yayınlama
     socket.on('sendLocation', async (data) => {
-        // payload: { driverId, lat, lng, speed, heading, estimatedArrival, routeGeometry }
         const { driverId, lat, lng, speed, heading, estimatedArrival, routeGeometry } = data;
 
         const locationUpdate = {
@@ -192,19 +198,22 @@ io.on('connection', (socket) => {
         if (estimatedArrival) locationUpdate.estimatedArrival = estimatedArrival;
         if (routeGeometry) locationUpdate.routeGeometry = routeGeometry;
 
-        // Veritabanını güncelle ve katettiği konumu geçmişe (routeHistory) ekle
         if (driverId) {
-            await Driver.findByIdAndUpdate(driverId, {
-                $set: locationUpdate,
-                $push: { routeHistory: { lat, lng } }
-            });
+            try {
+                await Driver.findByIdAndUpdate(driverId, {
+                    $set: locationUpdate,
+                    $push: { routeHistory: { lat, lng } }
+                });
+            } catch (err) {
+                console.error("Konum güncelleme veritabanı hatası:", err.message);
+            }
         }
 
-        // Haritada izleyen tüm web panellerine canlı veriyi anlık fırlat
+        // Haritada izleyen tüm ekranlara canlı veriyi anlık ilet
         io.emit('updateLocation', data);
     });
 
-    // Sürücü Hedefe Vardığında
+    // Yolculuk Bitişi
     socket.on('endTrip', async (data) => {
         const { driverId } = data;
         if (driverId) {
@@ -213,8 +222,8 @@ io.on('connection', (socket) => {
         }
     });
 
-    socket.on('disconnect', () => {
-        console.log("❌ İstemci ayrıldı:", socket.id);
+    socket.on('disconnect', (reason) => {
+        console.log(`❌ İstemci ayrıldı (${socket.id}):`, reason);
     });
 });
 
