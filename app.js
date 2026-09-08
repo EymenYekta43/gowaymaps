@@ -1,6 +1,10 @@
 const BACKEND_URL = "https://gowaymaps-backend.onrender.com";
 
-// 1. Leaflet Haritası
+let currentUser = JSON.parse(localStorage.getItem('goway_user')) || null;
+let watchId = null;
+let manualSpeed = 60;
+
+// Harita Kurulumu
 const map = L.map('map').setView([39.92077, 32.85411], 6);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
@@ -8,86 +12,104 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 }).addTo(map);
 
 const driverMarkers = {};
-const driverRoutes = {};
+const activeRoutes = {};   // Şu an izlenen mavi rota
+const historyRoutes = {};  // Geçmiş izlenen gri/gri-mavi rota
 
-// 2. Tekil Socket.io Bağlantısı
-const socket = io(BACKEND_URL, {
-    transports: ['websocket', 'polling'],
-    reconnection: true,
-    reconnectionAttempts: 10
-});
-
-const statusBadge = document.getElementById('statusBadge');
-const statusText = document.getElementById('statusText');
+// Socket Bağlantısı
+const socket = io(BACKEND_URL, { transports: ['websocket', 'polling'] });
 
 socket.on('connect', () => {
-    console.log("✅ Sunucuya kesintisiz bağlandık!");
-    statusBadge.classList.add('online');
-    statusText.innerText = "Canlı Bağlantı Aktif";
+    document.getElementById('statusBadge').classList.add('online');
+    document.getElementById('statusText').innerText = "Canlı Bağlantı Aktif";
 });
 
 socket.on('disconnect', () => {
-    statusBadge.classList.remove('online');
-    statusText.innerText = "Bağlantı Kesildi";
+    document.getElementById('statusBadge').classList.remove('online');
+    document.getElementById('statusText').innerText = "Bağlantı Kesildi";
 });
 
-// 3. Canlı Konum ve Rota Çizimi
-socket.on('updateLocation', (data) => {
-    const { driverId, name, plate, lat, lng, speed, heading, routeGeometry, estimatedArrival } = data;
-    if (!lat || !lng) return;
+function switchTab(tabId, event) {
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+    document.getElementById(tabId).classList.add('active');
+    if (event) event.target.classList.add('active');
+}
 
-    document.getElementById('activeDriver').innerText = `${plate || 'Araç'} (${name || 'Sürücü'})`;
-    document.getElementById('speedDisplay').innerText = `${Math.round(speed || 0)} km/s`;
-    
-    if (estimatedArrival) {
-        const eta = new Date(estimatedArrival);
-        document.getElementById('etaDisplay').innerText = eta.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
-    }
+function updateSpeedValue(val) {
+    manualSpeed = parseInt(val);
+    document.getElementById('speedValLabel').innerText = `${val} km/s`;
+}
 
-    const carIcon = L.divIcon({
-        className: 'custom-car-icon',
-        html: `<div style="transform: rotate(${heading || 0}deg); font-size: 28px; filter: drop-shadow(0px 2px 4px rgba(0,0,0,0.4));">🚗</div>`,
-        iconSize: [32, 32],
-        iconAnchor: [16, 16]
-    });
+function formatDate(dateStr) {
+    if (!dateStr) return '--:--';
+    const d = new Date(dateStr);
+    return d.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) + ' (' + d.toLocaleDateString('tr-TR') + ')';
+}
 
-    if (!driverMarkers[driverId]) {
-        driverMarkers[driverId] = L.marker([lat, lng], { icon: carIcon }).addTo(map);
-        driverMarkers[driverId].bindPopup(`<b>${plate}</b><br>${name}`).openPopup();
-        map.setView([lat, lng], 14);
+function checkAuth() {
+    if (currentUser) {
+        document.getElementById('userInfoBox').style.display = 'flex';
+        document.getElementById('welcomeUser').innerText = `${currentUser.name} (${currentUser.plate})`;
+        document.getElementById('userVehicleType').innerText = currentUser.vehicleType;
+        document.getElementById('userAvatar').src = currentUser.photoUrl || 'https://via.placeholder.com/40';
+        document.getElementById('driverControls').style.display = 'block';
+
+        document.getElementById('dispEstDep').innerText = formatDate(currentUser.estimatedDeparture);
+        document.getElementById('dispEstArr').innerText = formatDate(currentUser.estimatedArrival);
     } else {
-        driverMarkers[driverId].setLatLng([lat, lng]);
-        driverMarkers[driverId].setIcon(carIcon);
+        document.getElementById('userInfoBox').style.display = 'none';
+        document.getElementById('driverControls').style.display = 'none';
     }
+}
+checkAuth();
 
-    if (routeGeometry && Array.isArray(routeGeometry) && routeGeometry.length > 0) {
-        if (driverRoutes[driverId]) {
-            driverRoutes[driverId].setLatLngs(routeGeometry);
+// GİRİŞ
+document.getElementById('loginForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('loginEmail').value;
+    const password = document.getElementById('loginPassword').value;
+    const resMsg = document.getElementById('loginResponse');
+
+    try {
+        const res = await fetch(`${BACKEND_URL}/api/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            localStorage.setItem('goway_token', data.token);
+            localStorage.setItem('goway_user', JSON.stringify(data.user));
+            currentUser = data.user;
+            resMsg.style.color = "green";
+            resMsg.innerText = "Giriş başarılı!";
+            checkAuth();
+            switchTab('statusTab');
         } else {
-            driverRoutes[driverId] = L.polyline(routeGeometry, {
-                color: '#1a73e8',
-                weight: 6,
-                opacity: 0.8
-            }).addTo(map);
+            resMsg.style.color = "red";
+            resMsg.innerText = data.error;
         }
+    } catch (err) {
+        resMsg.style.color = "red";
+        resMsg.innerText = "Bağlantı hatası!";
     }
 });
 
-// 4. Form Gönderim İşlemi
+// KAYIT
 document.getElementById('registerForm').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const submitBtn = document.getElementById('submitBtn');
-    const formResponse = document.getElementById('formResponse');
-
-    submitBtn.disabled = true;
-    submitBtn.innerText = "GÖNDERİLİYOR...";
-
     const formData = {
-        name: document.getElementById('name').value,
-        email: document.getElementById('email').value,
-        plate: document.getElementById('plate').value,
-        vehicleType: document.getElementById('vehicleType').value
+        name: document.getElementById('regName').value,
+        email: document.getElementById('regEmail').value,
+        password: document.getElementById('regPassword').value,
+        plate: document.getElementById('regPlate').value,
+        vehicleType: document.getElementById('regVehicleType').value,
+        photoUrl: document.getElementById('regPhotoUrl').value,
+        estimatedDeparture: document.getElementById('regEstDep').value,
+        estimatedArrival: document.getElementById('regEstArr').value
     };
+    const resMsg = document.getElementById('regResponse');
 
     try {
         const res = await fetch(`${BACKEND_URL}/api/register`, {
@@ -95,21 +117,133 @@ document.getElementById('registerForm').addEventListener('submit', async (e) => 
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(formData)
         });
-        const result = await res.json();
+        const data = await res.json();
 
-        if (result.success) {
-            formResponse.style.color = "#2e7d32";
-            formResponse.innerText = "✅ Başvuru alındı! Onay maili gönderildi.";
+        if (data.success) {
+            resMsg.style.color = "green";
+            resMsg.innerText = "Kayıt alındı! Yönetici onayından sonra giriş yapabilirsiniz.";
             document.getElementById('registerForm').reset();
         } else {
-            formResponse.style.color = "#d93025";
-            formResponse.innerText = "❌ " + (result.error || "Hata oluştu.");
+            resMsg.style.color = "red";
+            resMsg.innerText = data.error;
         }
     } catch (err) {
-        formResponse.style.color = "#d93025";
-        formResponse.innerText = "❌ Sunucu hatası!";
-    } finally {
-        submitBtn.disabled = false;
-        submitBtn.innerText = "BAŞVURUYU GÖNDER";
+        resMsg.style.color = "red";
+        resMsg.innerText = "Sunucu hatası.";
+    }
+});
+
+function logout() {
+    localStorage.removeItem('goway_token');
+    localStorage.removeItem('goway_user');
+    currentUser = null;
+    checkAuth();
+    if (watchId) navigator.geolocation.clearWatch(watchId);
+    switchTab('loginTab');
+}
+
+// SEFERİ BAŞLAT / DURDUR
+function toggleTrip() {
+    const btn = document.getElementById('startTripBtn');
+    if (!watchId) {
+        if ("geolocation" in navigator) {
+            socket.emit('startTrip', { driverId: currentUser.id });
+            
+            watchId = navigator.geolocation.watchPosition((pos) => {
+                const computedSpeed = pos.coords.speed ? (pos.coords.speed * 3.6) : manualSpeed;
+                const payload = {
+                    driverId: currentUser.id,
+                    name: currentUser.name,
+                    plate: currentUser.plate,
+                    vehicleType: currentUser.vehicleType,
+                    photoUrl: currentUser.photoUrl,
+                    lat: pos.coords.latitude,
+                    lng: pos.coords.longitude,
+                    speed: computedSpeed,
+                    heading: pos.coords.heading || 0
+                };
+                socket.emit('sendLocation', payload);
+            }, (err) => alert("Konum alınamadı: " + err.message), { enableHighAccuracy: true });
+
+            btn.innerText = "SEFERİ DURDUR";
+            btn.style.background = "#d93025";
+        }
+    } else {
+        socket.emit('endTrip', { driverId: currentUser.id });
+        navigator.geolocation.clearWatch(watchId);
+        watchId = null;
+        btn.innerText = "SEFERİ BAŞLAT / KONUM PAYLAŞ";
+        btn.style.background = "#1a73e8";
+    }
+}
+
+socket.on('tripStarted', ({ driverId, actualDeparture }) => {
+    if (currentUser && currentUser.id === driverId) {
+        document.getElementById('dispActDep').innerText = formatDate(actualDeparture);
+    }
+});
+
+socket.on('tripEnded', ({ driverId, actualArrival }) => {
+    if (currentUser && currentUser.id === driverId) {
+        document.getElementById('dispActArr').innerText = formatDate(actualArrival);
+    }
+});
+
+// HARİTA TELEMETRİ GÜNCELLEMESİ (GEÇMİŞ ROTA + AKTİF ROTA + HIZ + GÖRSEL)
+socket.on('updateLocation', (data) => {
+    const { driverId, name, plate, vehicleType, photoUrl, lat, lng, speed, heading, routeGeometry } = data;
+    if (!lat || !lng) return;
+
+    document.getElementById('activeDriver').innerText = `${plate} (${vehicleType})`;
+    document.getElementById('speedDisplay').innerText = `${Math.round(speed || 0)} km/s`;
+
+    // Sürücü İkonu (Fotoğraflı veya Araç Tipli)
+    const iconHtml = photoUrl 
+        ? `<div class="marker-pin"><img src="${photoUrl}" /></div>`
+        : `<div class="marker-pin"><span class="marker-icon">${vehicleType === 'Lojistik Transfer Aracı' ? '🚛' : '🚗'}</span></div>`;
+
+    const customIcon = L.divIcon({
+        className: 'custom-marker',
+        html: iconHtml,
+        iconSize: [42, 42],
+        iconAnchor: [21, 21]
+    });
+
+    if (!driverMarkers[driverId]) {
+        driverMarkers[driverId] = L.marker([lat, lng], { icon: customIcon }).addTo(map);
+        driverMarkers[driverId].bindPopup(`<b>${plate}</b><br>${name}<br><i>${vehicleType}</i>`).openPopup();
+        map.setView([lat, lng], 14);
+        historyRoutes[driverId] = [];
+    } else {
+        driverMarkers[driverId].setLatLng([lat, lng]);
+        driverMarkers[driverId].setIcon(customIcon);
+    }
+
+    // Google Maps Tarzı Geçmiş Rota Çizimi (Siyah / Gri kesikli çizgi)
+    historyRoutes[driverId].push([lat, lng]);
+    if (historyRoutes[driverId].length > 1) {
+        if (!historyRoutes[`line_${driverId}`]) {
+            historyRoutes[`line_${driverId}`] = L.polyline(historyRoutes[driverId], {
+                color: '#5f6368',
+                weight: 5,
+                opacity: 0.7,
+                dashArray: '5, 10'
+            }).addTo(map);
+        } else {
+            historyRoutes[`line_${driverId}`].setLatLngs(historyRoutes[driverId]);
+        }
+    }
+
+    // Aktif / Hedef Rota Çizimi (Koyu Mavi Canlı Rota)
+    if (routeGeometry && Array.isArray(routeGeometry)) {
+        if (activeRoutes[driverId]) {
+            activeRoutes[driverId].setLatLngs(routeGeometry);
+        } else {
+            activeRoutes[driverId] = L.polyline(routeGeometry, {
+                color: '#1a73e8',
+                weight: 6,
+                opacity: 0.9
+            }).addTo(map);
+        }
     }
 });
