@@ -93,3 +93,51 @@ socket.on('updateLocation', (data) => {
             .openPopup();
     }
 });
+// --- TEMA DEĞİŞTİRME (AYDINLIK / KARANLIK MOD) ---
+const themeToggleBtn = document.getElementById('themeToggleBtn');
+let isDarkMode = true;
+
+if (themeToggleBtn) {
+    themeToggleBtn.addEventListener('click', () => {
+        isDarkMode = !isDarkMode;
+        document.body.classList.toggle('dark-mode', isDarkMode);
+        document.body.classList.toggle('light-mode', !isDarkMode);
+        
+        const icon = themeToggleBtn.querySelector('i');
+        if (isDarkMode) {
+            icon.className = 'fa-solid fa-moon';
+        } else {
+            icon.className = 'fa-solid fa-sun';
+        }
+    });
+}
+
+// --- SÜRÜCÜ GİRİŞ YAP / KONUM BAŞLAT KONTROLÜ ---
+const openLoginBtn = document.getElementById('openLoginBtn');
+const loginModal = document.getElementById('loginModal');
+const closeLoginModalBtn = document.getElementById('closeLoginModalBtn');
+const loginForm = document.getElementById('loginForm');
+
+if (openLoginBtn && loginModal) {
+    openLoginBtn.addEventListener('click', () => {
+        loginModal.style.display = 'flex';
+    });
+}
+
+if (closeLoginModalBtn && loginModal) {
+    closeLoginModalBtn.addEventListener('click', () => {
+        loginModal.style.display = 'none';
+    });
+}
+
+if (loginForm) {
+    loginForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const plate = document.getElementById('loginPlate').value;
+
+        // GPS Canlı Konum Paylaşımını Başlat
+        startTracking('driver_' + Date.now(), 'Sürücü (' + plate + ')', plate);
+        alert(`Giriş başarılı! ${plate} plakalı araç için canlı konum paylaşımı başlatıldı.`);
+        loginModal.style.display = 'none';
+    });
+}
